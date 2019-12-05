@@ -7,7 +7,7 @@ class FeatureExtractor(nn.Module):
     def __init__(self, feature_size, base_depth, input_shape):
         super(FeatureExtractor, self).__init__()
         self._conv_output_shape = None
-        self._conv1 = nn.Conv2d(3, base_depth, 3, 2)
+        self._conv1 = nn.Conv2d(input_shape[0], base_depth, 3, 2)
         self._conv2 = nn.Conv2d(base_depth, 2 * base_depth, 3, 2)
         self._conv3 = nn.Conv2d(2 * base_depth, 4 * base_depth, 5)
         self._feature_size = feature_size
@@ -32,12 +32,12 @@ class FeatureExtractor(nn.Module):
             raise ValueError("Observations must have at least 3 dimensions")
         if len(obs.shape) == 3:
             obs = obs.unsqueeze(0)
-        return obs.permute(0, 3, 1, 2).float()
+        return obs.float()
 
     def _get_conv_output_shape(self):
         if self._conv_output_shape is not None:
             return self._conv_output_shape
-        dummy_input = torch.rand(self._input_shape).permute(2,0,1).unsqueeze(0)
+        dummy_input = torch.rand(self._input_shape).unsqueeze(0)
         out = self._conv1(dummy_input)
         out = self._conv2(out)
         out = self._conv3(out)
@@ -66,7 +66,7 @@ class CategoricalNetwork(nn.Module):
 class CategoricalAgent(object):
     def __init__(
             self,
-            observation_space,
+            observation_shape,
             action_space,
             N=51,
             v_min=-10,
@@ -79,7 +79,7 @@ class CategoricalAgent(object):
             base_depth=128,
             layer_size=128):
         self._device = "cuda" if torch.cuda.is_available() else "cpu"
-        self._observation_space = observation_space
+        self._observation_shape = observation_shape
         self._action_space = action_space
         self._gamma = gamma
         self._epsilon = epsilon
@@ -89,7 +89,7 @@ class CategoricalAgent(object):
         self._delta_z = (v_max - v_min) / self._num_atoms
         self._values = torch.tensor([v_min + i * self._delta_z for i in range(self._num_atoms)])
 
-        input_shape = observation_space.shape
+        input_shape = self._observation_shape
         self._num_actions = action_space.n
         self._feature_extractor = FeatureExtractor(feature_size,
                                                    base_depth,
@@ -148,6 +148,7 @@ class CategoricalAgent(object):
             action = self._action_space.sample()
         else:
             with torch.no_grad():
+                obs = torch.tensor(obs).to(self._device)
                 features = self._feature_extractor(obs)
                 value_probs = self._categorical_network(features)
                 q_values = value_probs @ self._values

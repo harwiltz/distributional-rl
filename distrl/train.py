@@ -18,6 +18,7 @@ def train_categorical_agent(
         max_episode_steps=None,
         gamma=0.99,
         step_size=3e-4,
+        stack_size=4,
         N=51,
         v_min=-10,
         v_max=10,
@@ -28,10 +29,12 @@ def train_categorical_agent(
         layer_size=128,
         memory_capacity=10000):
     env = gym.make(environment_name)
+    obs = env.reset()
+    observation_shape = preprocess(obs).shape
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
     print("Using device: {}".format(device))
     agent = CategoricalAgent(
-            env.observation_space,
+            (stack_size, *observation_shape),
             env.action_space,
             N=N,
             v_min=v_min,
@@ -42,34 +45,35 @@ def train_categorical_agent(
             feature_size=feature_size,
             base_depth=base_depth,
             layer_size=layer_size)
-    replay = UniformExperienceReplay(memory_capacity, env.observation_space.shape, device)
+    replay = UniformExperienceReplay(memory_capacity, observation_shape, device)
 
     writer = SummaryWriter(logdir)
 
-    obs = env.reset()
     print("Beginning initial collection (random actions)")
     for _ in range(initial_collect_length):
         action = env.action_space.sample()
         next_obs, reward, done, _ = env.step(action)
-        replay.add(obs, action, reward, next_obs, 1 if done else 0)
+        replay.add(preprocess(obs), action, reward, preprocess(next_obs), 1 if done else 0)
 
-    obs = env.reset()
+    obs = preprocess(env.reset())
     episode_length = 0
     episode_reward = 0
     episode_number = 0
     print("Training begins...")
+    obs_state = np.zeros((stack_size, *observation_shape))
     for i in range(num_epochs):
         done = False
         for j in range(steps_per_epoch):
             episode_length += 1
-            formatted_obs = format_obs(obs, device)
-            action = agent.action(formatted_obs)
+            obs_state = np.concatenate(([obs], obs_state[:-1]), axis=0)
+            action = agent.action(obs_state)
             next_obs, reward, done, _ = env.step(action)
+            next_obs = preprocess(next_obs)
             episode_reward += reward
             replay.add(obs, action, reward, next_obs, 1 if done else 0)
             episode_too_long = (max_episode_steps is not None) and (j >= max_episode_steps)
             if done or episode_too_long:
-                obs = env.reset()
+                obs = preprocess(env.reset())
                 writer.add_scalar('Performance/Score', episode_reward, episode_number)
                 writer.add_scalar('Performance/Episode_Length', episode_length, episode_number)
                 episode_length = 0
@@ -81,8 +85,11 @@ def train_categorical_agent(
         loss = agent.train(experience)
         writer.add_scalar('Training/Loss', loss, i)
 
-def format_obs(obs, device):
-    obs = torch.FloatTensor(obs).to(device) / float(255)
+def preprocess(obs):
+    # Convert to grayscale
+    obs = np.mean(obs, axis=2).astype(np.uint8)
+    # Downsample to save memory
+    obs = obs[::2, ::2]
     return obs
 
 if __name__ == "__main__":
