@@ -45,7 +45,10 @@ def train_categorical_agent(
             feature_size=feature_size,
             base_depth=base_depth,
             layer_size=layer_size)
-    replay = UniformExperienceReplay(memory_capacity, observation_shape, device)
+    replay = UniformExperienceReplay(memory_capacity,
+                                     observation_shape,
+                                     stack_size=stack_size,
+                                     device=device)
 
     writer = SummaryWriter(logdir)
 
@@ -61,6 +64,7 @@ def train_categorical_agent(
     episode_number = 0
     print("Training begins...")
     obs_state = np.zeros((stack_size, *observation_shape))
+    writer.add_graph(agent, torch.tensor(obs_state))
     for i in range(num_epochs):
         done = False
         for j in range(steps_per_epoch):
@@ -82,7 +86,7 @@ def train_categorical_agent(
             else:
                 obs = next_obs
         experience = replay.sample(batch_size)
-        loss = agent.train(experience)
+        loss = agent.train_agent(experience)
         writer.add_scalar('Training/Loss', loss, i)
 
 def preprocess(obs):

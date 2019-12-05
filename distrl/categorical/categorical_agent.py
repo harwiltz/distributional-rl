@@ -63,7 +63,7 @@ class CategoricalNetwork(nn.Module):
         out = F.softmax(out, dim=-1)
         return out
 
-class CategoricalAgent(object):
+class CategoricalAgent(nn.Module):
     def __init__(
             self,
             observation_shape,
@@ -78,6 +78,7 @@ class CategoricalAgent(object):
             feature_size=128,
             base_depth=128,
             layer_size=128):
+        super(CategoricalAgent, self).__init__()
         self._device = "cuda" if torch.cuda.is_available() else "cpu"
         self._observation_shape = observation_shape
         self._action_space = action_space
@@ -104,7 +105,13 @@ class CategoricalAgent(object):
                 list(feature_extractor_params) + list(categorical_network_params),
                 lr=lr)
 
-    def train(self, experience):
+    def forward(self, obs):
+        """
+        Presently only used for debugging/visualization purposes
+        """
+        return self.action(obs, explore=False)
+
+    def train_agent(self, experience):
         obs, action, reward, next_obs, done = experience
 
         features = self._feature_extractor(obs)
@@ -143,8 +150,8 @@ class CategoricalAgent(object):
         self._optimizer.step()
         return loss
 
-    def action(self, obs):
-        if np.random.uniform() < self._epsilon:
+    def action(self, obs, explore=True):
+        if explore and (np.random.uniform() < self._epsilon):
             action = self._action_space.sample()
         else:
             with torch.no_grad():

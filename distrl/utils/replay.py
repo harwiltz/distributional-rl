@@ -18,6 +18,7 @@ class UniformExperienceReplay(object):
         self._act_buf = np.zeros(self._capacity)
         self._rew_buf = np.zeros(self._capacity)
         self._done_buf = np.zeros(self._capacity)
+        self._observation_shape = observation_shape
 
     def add(self, obs, act, rew, next_obs, done):
         self._obs_buf[self._ptr] = obs
