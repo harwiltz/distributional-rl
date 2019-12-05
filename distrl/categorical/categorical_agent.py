@@ -109,7 +109,8 @@ class CategoricalAgent(nn.Module):
         """
         Presently only used for debugging/visualization purposes
         """
-        return self.action(obs, explore=False)
+        features = self._feature_extractor(obs)
+        return self._categorical_network(features)
 
     def train_agent(self, experience):
         obs, action, reward, next_obs, done = experience
