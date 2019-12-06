@@ -119,30 +119,33 @@ class CategoricalAgent(nn.Module):
 
         features = self._feature_extractor(obs)
         value_probs = self._categorical_network(features)
+        action_select = action.unsqueeze(1).repeat(1, self._num_atoms).unsqueeze(1)
+        chosen_value_probs = value_probs.gather(1, action_select.long()).squeeze()
 
-        next_features = self._feature_extractor(next_obs)
-        next_value_probs = self._categorical_network(next_features)
-        q_values = next_value_probs @ self._values
-        optimal_actions = torch.argmax(q_values, dim=-1)
-        # TODO: vectorize this part
         with torch.no_grad():
+            next_features = self._feature_extractor(next_obs)
+            next_value_probs = self._categorical_network(next_features)
+            q_values = next_value_probs @ self._values
+            optimal_actions = torch.argmax(q_values, dim=-1)
+            optimal_select = optimal_actions.unsqueeze(1).repeat(1, self._num_atoms).unsqueeze(1)
+            optimal_value_probs = next_value_probs.gather(1, optimal_select.long()).squeeze()
+
             m = torch.zeros((obs.shape[0], self._num_atoms)).to(self._device)
+            not_done = (1. - done.view(-1, 1)).float()
+            r = reward.view(-1, 1)
+            z = self._values.view(1, -1)
+            tz = (r + not_done * self._gamma * z).clamp(self._values[0], self._values[-1])
+            b = (tz - self._values[0]) / self._delta_z
+            l = torch.floor(b).long()
+            u = torch.ceil(b).long()
+            ml = (u + (l == u).float() - b) * optimal_value_probs
+            mu = (b - l) * optimal_value_probs
+
             for i in range(obs.shape[0]):
-                if done[i] == 0:
-                    future_value = self._gamma * self._values + reward[i]
-                else:
-                    future_value = reward[i] * torch.ones_like(self._values).to(self._device)
-                tz = torch.clamp(future_value, self._values[0], self._values[-1])
-                b = (tz - self._values[0]) / self._delta_z
-                for j in range(self._num_atoms):
-                    l = torch.floor(b[j]).int()
-                    u = torch.ceil(b[j]).int()
-                    m[i][l] += next_value_probs[i][optimal_actions[i]][j] * (u - b[j])
-                    m[i][u] += next_value_probs[i][optimal_actions[i]][j] * (b[j] - l)
-        loss = torch.zeros((obs.shape[0],)).to(self._device)
-        for i in range(obs.shape[0]):
-            loss[i] = -torch.t(m[i]) @ torch.log(value_probs[i][action[i].int()])
-        loss = loss.mean()
+                m[i].index_add_(0, l[i], ml[i])
+                m[i].index_add_(0, u[i], mu[i])
+
+        loss = -(m * chosen_value_probs.log()).sum(axis=-1).mean()
         self._optimizer.zero_grad()
         loss.backward()
         self._optimizer.step()
