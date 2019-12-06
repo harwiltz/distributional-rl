@@ -149,7 +149,12 @@ class CategoricalAgent(nn.Module):
         self._optimizer.zero_grad()
         loss.backward()
         self._optimizer.step()
-        return loss
+        self._epsilon = self._epsilon * (1. - self._epsilon_decay)
+        artifacts = {
+            'images': obs[0],
+            'value_distribution': next_value_probs[0],
+        }
+        return loss, artifacts
 
     def action(self, obs, explore=True):
         if explore and (np.random.uniform() < self._epsilon):
@@ -161,5 +166,7 @@ class CategoricalAgent(nn.Module):
                 value_probs = self._categorical_network(features)
                 q_values = value_probs @ self._values
                 action = torch.argmax(q_values).squeeze().detach().numpy()
-        self._epsilon = self._epsilon * (1. - self._epsilon_decay)
         return action
+
+    def value_support(self):
+        return self._values

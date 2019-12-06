@@ -28,7 +28,7 @@ class UniformExperienceReplay(object):
         self._done_buf[self._ptr] = done
         self._ptr = (self._ptr + 1) % self._capacity
         self._size = min(self._size + 1, self._capacity)
-    
+
     def sample(self, batch_size=1):
         assert self._size > 0, "Trying to sample from empty replay buffer"
         obs_samples = []

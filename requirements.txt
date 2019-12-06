@@ -2,3 +2,5 @@ torch
 tensorboard
 gym
 gym[atari]
+pillow
+matplotlib

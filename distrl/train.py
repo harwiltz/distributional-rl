@@ -1,8 +1,11 @@
 import argparse
 import gym
+import io
+import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
+from PIL import Image
 from torch.utils.tensorboard import SummaryWriter
 
 from distrl.categorical.categorical_agent import CategoricalAgent
@@ -53,10 +56,16 @@ def train_categorical_agent(
     writer = SummaryWriter(logdir)
 
     print("Beginning initial collection (random actions)")
+    obs = preprocess(obs)
     for _ in range(initial_collect_length):
         action = env.action_space.sample()
         next_obs, reward, done, _ = env.step(action)
-        replay.add(preprocess(obs), action, reward, preprocess(next_obs), 1 if done else 0)
+        next_obs = preprocess(next_obs)
+        replay.add(obs, action, reward, next_obs, 1 if done else 0)
+        if done:
+            obs = preprocess(env.reset())
+        else:
+            obs = next_obs
 
     obs = preprocess(env.reset())
     episode_length = 0
@@ -75,7 +84,10 @@ def train_categorical_agent(
             next_obs = preprocess(next_obs)
             episode_reward += reward
             replay.add(obs, action, reward, next_obs, 1 if done else 0)
-            episode_too_long = (max_episode_steps is not None) and (j >= max_episode_steps)
+            if max_episode_steps is not None:
+                episode_too_long = episode_length >= max_episode_steps
+            else:
+                episode_too_long = False
             if done or episode_too_long:
                 obs = preprocess(env.reset())
                 writer.add_scalar('Performance/Score', episode_reward, episode_number)
@@ -86,14 +98,32 @@ def train_categorical_agent(
             else:
                 obs = next_obs
         experience = replay.sample(batch_size)
-        loss = agent.train_agent(experience)
-        writer.add_scalar('Training/Loss', loss, i)
+        loss, artifacts = agent.train_agent(experience)
+        artifacts.update({'loss': loss})
+        update_epoch_summaries(writer, agent, artifacts, i)
+
+def update_epoch_summaries(writer, agent, artifacts, epoch):
+    writer.add_scalar('Training/Loss', artifacts['loss'], epoch)
+    writer.add_images('Obs/Images', artifacts['images'].unsqueeze(1), dataformats="NCHW")
+    value_dist_img = gen_value_dist_plot(agent.value_support(), artifacts['value_distribution'])
+    writer.add_image('Obs/Distributions', torch.tensor(value_dist_img), dataformats='HWC')
+
+def gen_value_dist_plot(value_support, value_dist):
+    buf = io.BytesIO()
+    for i in range(value_dist.shape[0]):
+        dist = value_dist[i].detach().numpy()
+        plt.bar(value_support, dist, alpha=0.5, label="Action {}".format(i))
+    plt.legend()
+    plt.savefig(buf)
+    plt.clf()
+    img = np.asarray(Image.open(buf).convert('RGB'))
+    return img
 
 def preprocess(obs):
     # Convert to grayscale
     obs = np.mean(obs, axis=2).astype(np.uint8)
     # Downsample to save memory
-    obs = obs[::2, ::2]
+#    obs = obs[::2, ::2]
     return obs
 
 if __name__ == "__main__":
@@ -102,9 +132,15 @@ if __name__ == "__main__":
     parser.add_argument('--env', type=str, default='Breakout-v0', help='Gym environment name')
     parser.add_argument('--epochs', type=int, default=1000, help='Number training epochs')
     parser.add_argument('--steps_per_epoch', type=int, default=1000, help='Environment steps per epoch')
+    parser.add_argument('--epsilon', type=float, default=0.05, help='For e-greedy')
+    parser.add_argument('--epsilon_decay', type=float, default=1e-4, help='For e-greedy')
+    parser.add_argument('--feature_size', type=int, default=128)
     args = parser.parse_args()
     train_categorical_agent(
             args.env,
             logdir=args.logdir,
             num_epochs=args.epochs,
-            steps_per_epoch=args.steps_per_epoch)
+            steps_per_epoch=args.steps_per_epoch,
+            epsilon=args.epsilon,
+            epsilon_decay=args.epsilon_decay,
+            feature_size=args.feature_size)
