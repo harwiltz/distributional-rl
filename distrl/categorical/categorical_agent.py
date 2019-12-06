@@ -139,9 +139,9 @@ class CategoricalAgent(nn.Module):
                     u = torch.ceil(b[j]).int()
                     m[i][l] += next_value_probs[i][optimal_actions[i]][j] * (u - b[j])
                     m[i][u] += next_value_probs[i][optimal_actions[i]][j] * (b[j] - l)
-        loss = torch.FloatTensor([0]).to(self._device)
+        loss = torch.zeros((obs.shape[0],)).to(self._device)
         for i in range(obs.shape[0]):
-            loss -= torch.t(m[i]) @ torch.log(value_probs[i][action[i].int()])
+            loss[i] = -torch.t(m[i]) @ torch.log(value_probs[i][action[i].int()])
         loss = loss.mean()
         self._optimizer.zero_grad()
         loss.backward()
