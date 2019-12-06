@@ -73,7 +73,7 @@ def train_categorical_agent(
     episode_number = 0
     print("Training begins...")
     obs_state = np.zeros((stack_size, *observation_shape))
-    writer.add_graph(agent, torch.tensor(obs_state))
+    writer.add_graph(agent, torch.tensor(obs_state).to(device))
     for i in range(num_epochs):
         done = False
         for j in range(steps_per_epoch):
@@ -110,9 +110,10 @@ def update_epoch_summaries(writer, agent, artifacts, epoch):
 
 def gen_value_dist_plot(value_support, value_dist):
     buf = io.BytesIO()
+    support = value_support.detach().cpu().numpy()
     for i in range(value_dist.shape[0]):
-        dist = value_dist[i].detach().numpy()
-        plt.bar(value_support, dist, alpha=0.5, label="Action {}".format(i))
+        dist = value_dist[i].detach().cpu().numpy()
+        plt.bar(support, dist, alpha=0.5, label="Action {}".format(i))
     plt.legend()
     plt.savefig(buf)
     plt.clf()

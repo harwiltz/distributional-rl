@@ -88,7 +88,9 @@ class CategoricalAgent(nn.Module):
 
         self._num_atoms = N
         self._delta_z = (v_max - v_min) / self._num_atoms
-        self._values = torch.tensor([v_min + i * self._delta_z for i in range(self._num_atoms)])
+        self._values = torch.tensor(
+                [v_min + i * self._delta_z for i in range(self._num_atoms)]
+        ).to(self._device)
 
         input_shape = self._observation_shape
         self._num_actions = action_space.n
@@ -122,11 +124,11 @@ class CategoricalAgent(nn.Module):
         next_value_probs = self._categorical_network(next_features)
         q_values = next_value_probs @ self._values
         optimal_actions = torch.argmax(q_values, dim=-1)
-        m = torch.zeros((obs.shape[0], self._num_atoms))
+        m = torch.zeros((obs.shape[0], self._num_atoms)).to(self._device)
 #        if done == 0:
 #            future_value = reward + self._gamma * self._values
 #        else:
-#            future_value = reward * torch.ones_like(self._values)
+#            future_value = reward * torch.ones_like(self._values).to(self._device)
 #        tz = torch.min(self._values[-1], torch.max(self._values[0], future_values))
 #        b = (tz - self._values[0]) / self._delta_z
         # TODO: vectorize this part
@@ -134,7 +136,7 @@ class CategoricalAgent(nn.Module):
             if done[i] == 0:
                 future_value = self._gamma * self._values + reward[i]
             else:
-                future_value = reward[i] * torch.ones_like(self._values)
+                future_value = reward[i] * torch.ones_like(self._values).to(self._device)
             tz = torch.clamp(future_value, self._values[0], self._values[-1])
             b = (tz - self._values[0]) / self._delta_z
             for j in range(self._num_atoms):
@@ -142,7 +144,7 @@ class CategoricalAgent(nn.Module):
                 u = torch.ceil(b[j]).int()
                 m[i][l] += next_value_probs[i][optimal_actions[i]][j] * (u - b[j])
                 m[i][u] += next_value_probs[i][optimal_actions[i]][j] * (b[j] - l)
-        loss = torch.FloatTensor([0])
+        loss = torch.FloatTensor([0]).to(self._device)
         for i in range(obs.shape[0]):
             loss -= torch.t(m[i]) @ torch.log(value_probs[i][action[i].int()])
         loss = loss.mean()
@@ -165,7 +167,7 @@ class CategoricalAgent(nn.Module):
                 features = self._feature_extractor(obs)
                 value_probs = self._categorical_network(features)
                 q_values = value_probs @ self._values
-                action = torch.argmax(q_values).squeeze().detach().numpy()
+                action = torch.argmax(q_values).squeeze().detach().cpu().numpy()
         return action
 
     def value_support(self):
