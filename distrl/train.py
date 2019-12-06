@@ -142,6 +142,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--step_size', type=float, default=3e-4)
     parser.add_argument('--layer_size', type=int, default=128)
+    parser.add_argument('--atoms', type=int, default=51)
     args = parser.parse_args()
     train_categorical_agent(
             args.env,
@@ -155,4 +156,5 @@ if __name__ == "__main__":
             initial_collect_length=args.initial_collect_length,
             batch_size=args.batch_size,
             layer_size=args.layer_size,
-            step_size=args.step_size)
+            step_size=args.step_size,
+            N=args.atoms)
