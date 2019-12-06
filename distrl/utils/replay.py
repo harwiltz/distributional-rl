@@ -56,7 +56,7 @@ class UniformExperienceReplay(object):
             torch.tensor(act_samples).to(self._device),
             torch.tensor(rew_samples).to(self._device),
             torch.tensor(next_obs_samples).to(self._device),
-            torch.tensor(done_samples)
+            torch.tensor(done_samples).to(self._device)
         )
 
     def full(self):
