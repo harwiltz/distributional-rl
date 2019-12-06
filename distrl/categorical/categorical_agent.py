@@ -151,11 +151,12 @@ class CategoricalAgent(nn.Module):
         self._optimizer.zero_grad()
         loss.backward()
         self._optimizer.step()
-        self._epsilon = self._epsilon * (1. - self._epsilon_decay)
         artifacts = {
             'images': obs[0],
             'value_distribution': next_value_probs[0],
+            'epsilon': self._epsilon,
         }
+        self._epsilon = self._epsilon * (1. - self._epsilon_decay)
         return loss, artifacts
 
     def action(self, obs, explore=True):

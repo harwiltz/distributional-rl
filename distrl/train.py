@@ -104,6 +104,7 @@ def train_categorical_agent(
 
 def update_epoch_summaries(writer, agent, artifacts, epoch):
     writer.add_scalar('Training/Loss', artifacts['loss'], epoch)
+    writer.add_scalar('Training/Epsilon', artifacts['epsilon'], epoch)
     writer.add_images('Obs/Images', artifacts['images'].unsqueeze(1), dataformats="NCHW")
     value_dist_img = gen_value_dist_plot(agent.value_support(), artifacts['value_distribution'])
     writer.add_image('Obs/Distributions', torch.tensor(value_dist_img), dataformats='HWC')
@@ -136,6 +137,11 @@ if __name__ == "__main__":
     parser.add_argument('--epsilon', type=float, default=0.05, help='For e-greedy')
     parser.add_argument('--epsilon_decay', type=float, default=1e-4, help='For e-greedy')
     parser.add_argument('--feature_size', type=int, default=128)
+    parser.add_argument('--initial_collect_length', type=int, default=1000)
+    parser.add_argument('--memory_capacity', type=int, default=10000)
+    parser.add_argument('--batch_size', type=int, default=32)
+    parser.add_argument('--step_size', type=float, default=3e-4)
+    parser.add_argument('--layer_size', type=int, default=128)
     args = parser.parse_args()
     train_categorical_agent(
             args.env,
@@ -144,4 +150,9 @@ if __name__ == "__main__":
             steps_per_epoch=args.steps_per_epoch,
             epsilon=args.epsilon,
             epsilon_decay=args.epsilon_decay,
-            feature_size=args.feature_size)
+            feature_size=args.feature_size,
+            memory_capacity=args.memory_capacity,
+            initial_collect_length=args.initial_collect_length,
+            batch_size=args.batch_size,
+            layer_size=args.layer_size,
+            step_size=args.step_size)
