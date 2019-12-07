@@ -31,6 +31,7 @@ def train_categorical_agent(
         base_depth=32,
         layer_size=128,
         memory_capacity=10000,
+        videos=True,
         video_freq=2):
     env = gym.make(environment_name)
     obs = env.reset()
@@ -101,7 +102,7 @@ def train_categorical_agent(
         experience = replay.sample(batch_size)
         loss, artifacts = agent.train_agent(experience)
         artifacts.update({'loss': loss})
-        if i % video_freq == 0:
+        if videos and (i % video_freq == 0):
             video = gen_video(
                     agent,
                     environment_name,
@@ -178,6 +179,7 @@ if __name__ == "__main__":
     parser.add_argument('--step_size', type=float, default=3e-4)
     parser.add_argument('--layer_size', type=int, default=128)
     parser.add_argument('--atoms', type=int, default=51)
+    parser.add_argument('--no_video', default=False, action="store_true", help="Add video previews to tensorboard")
     parser.add_argument('--video_freq', type=int, default=10)
     args = parser.parse_args()
     train_categorical_agent(
@@ -194,4 +196,5 @@ if __name__ == "__main__":
             layer_size=args.layer_size,
             step_size=args.step_size,
             N=args.atoms,
+            videos=not args.no_video,
             video_freq=args.video_freq)
