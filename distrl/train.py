@@ -28,7 +28,7 @@ def train_categorical_agent(
         epsilon=0.05,
         epsilon_decay=0.001,
         feature_size=128,
-        base_depth=128,
+        base_depth=32,
         layer_size=128,
         memory_capacity=10000,
         video_freq=2):

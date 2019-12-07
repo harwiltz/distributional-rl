@@ -9,7 +9,7 @@ class FeatureExtractor(nn.Module):
         self._conv_output_shape = None
         self._conv1 = nn.Conv2d(input_shape[0], base_depth, 8, 4)
         self._conv2 = nn.Conv2d(base_depth, 2 * base_depth, 4, 2)
-        self._conv3 = nn.Conv2d(2 * base_depth, 4 * base_depth, 3, 1)
+        self._conv3 = nn.Conv2d(2 * base_depth, 2 * base_depth, 3, 1)
         self._feature_size = feature_size
         self._input_shape = input_shape
         self._conv_output_shape = self._get_conv_output_shape()
