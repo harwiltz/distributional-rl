@@ -7,9 +7,9 @@ class FeatureExtractor(nn.Module):
     def __init__(self, feature_size, base_depth, input_shape):
         super(FeatureExtractor, self).__init__()
         self._conv_output_shape = None
-        self._conv1 = nn.Conv2d(input_shape[0], base_depth, 3, 2)
-        self._conv2 = nn.Conv2d(base_depth, 2 * base_depth, 3, 2)
-        self._conv3 = nn.Conv2d(2 * base_depth, 4 * base_depth, 5)
+        self._conv1 = nn.Conv2d(input_shape[0], base_depth, 8, 4)
+        self._conv2 = nn.Conv2d(base_depth, 2 * base_depth, 4, 2)
+        self._conv3 = nn.Conv2d(2 * base_depth, 4 * base_depth, 3, 1)
         self._feature_size = feature_size
         self._input_shape = input_shape
         self._conv_output_shape = self._get_conv_output_shape()
@@ -115,6 +115,7 @@ class CategoricalAgent(nn.Module):
         return self._categorical_network(features)
 
     def train_agent(self, experience):
+        self._optimizer.zero_grad()
         obs, action, reward, next_obs, done = experience
 
         features = self._feature_extractor(obs)
@@ -146,12 +147,11 @@ class CategoricalAgent(nn.Module):
                 m[i].index_add_(0, u[i], mu[i])
 
         loss = -(m * chosen_value_probs.log()).sum(axis=-1).mean()
-        self._optimizer.zero_grad()
         loss.backward()
         self._optimizer.step()
         artifacts = {
             'images': obs[0],
-            'value_distribution': next_value_probs[0],
+            'value_distribution': value_probs[0],
             'epsilon': self._epsilon,
         }
         self._epsilon = self._epsilon * (1. - self._epsilon_decay)

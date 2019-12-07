@@ -30,7 +30,8 @@ def train_categorical_agent(
         feature_size=128,
         base_depth=128,
         layer_size=128,
-        memory_capacity=10000):
+        memory_capacity=10000,
+        video_freq=2):
     env = gym.make(environment_name)
     obs = env.reset()
     observation_shape = preprocess(obs).shape
@@ -100,7 +101,38 @@ def train_categorical_agent(
         experience = replay.sample(batch_size)
         loss, artifacts = agent.train_agent(experience)
         artifacts.update({'loss': loss})
+        if i % video_freq == 0:
+            video = gen_video(
+                    agent,
+                    environment_name,
+                    stack_size,
+                    observation_shape,
+                    max_episode_steps)
+            artifacts.update({'video': video})
         update_epoch_summaries(writer, agent, artifacts, i)
+
+def gen_video(agent, env_name, stack_size, observation_shape, max_frames):
+    frames = []
+    env = gym.make(env_name)
+    obs = env.reset()
+    frames.append(obs)
+    obs = preprocess(obs)
+    obs_state = np.zeros((stack_size, *observation_shape))
+    episode_length = 0
+    while True:
+        episode_length += 1
+        obs_state = np.concatenate(([obs], obs_state[:-1]), axis=0)
+        action = agent.action(obs_state, explore=False)
+        obs, reward, done, _ = env.step(action)
+        frames.append(obs)
+        obs = preprocess(obs)
+        if done:
+            break
+        if max_frames is None:
+            continue
+        if episode_length > max_frames:
+            break
+    return frames
 
 def update_epoch_summaries(writer, agent, artifacts, epoch):
     writer.add_scalar('Training/Loss', artifacts['loss'], epoch)
@@ -108,6 +140,9 @@ def update_epoch_summaries(writer, agent, artifacts, epoch):
     writer.add_images('Obs/Images', artifacts['images'].unsqueeze(1), dataformats="NCHW")
     value_dist_img = gen_value_dist_plot(agent.value_support(), artifacts['value_distribution'])
     writer.add_image('Obs/Distributions', torch.tensor(value_dist_img), dataformats='HWC')
+    if 'video' in artifacts.keys():
+        video = torch.tensor(artifacts['video']).permute(0, 3, 1, 2).unsqueeze(0)
+        writer.add_video('Preview', video)
 
 def gen_value_dist_plot(value_support, value_dist):
     buf = io.BytesIO()

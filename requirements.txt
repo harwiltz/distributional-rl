@@ -4,3 +4,4 @@ gym
 gym[atari]
 pillow
 matplotlib
+moviepy
