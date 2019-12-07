@@ -142,7 +142,7 @@ def update_epoch_summaries(writer, agent, artifacts, epoch):
     writer.add_image('Obs/Distributions', torch.tensor(value_dist_img), dataformats='HWC')
     if 'video' in artifacts.keys():
         video = torch.tensor(artifacts['video']).permute(0, 3, 1, 2).unsqueeze(0)
-        writer.add_video('Preview', video)
+        writer.add_video('Preview', video, fps=30)
 
 def gen_value_dist_plot(value_support, value_dist):
     buf = io.BytesIO()
