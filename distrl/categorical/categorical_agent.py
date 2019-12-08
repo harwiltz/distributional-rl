@@ -87,7 +87,7 @@ class CategoricalAgent(nn.Module):
         self._epsilon_decay = epsilon_decay
 
         self._num_atoms = N
-        self._delta_z = (v_max - v_min) / self._num_atoms
+        self._delta_z = (v_max - v_min) / (self._num_atoms - 1)
         self._values = torch.tensor(
                 [v_min + i * self._delta_z for i in range(self._num_atoms)]
         ).to(self._device)
