@@ -138,6 +138,7 @@ def gen_video(agent, env_name, stack_size, observation_shape, max_frames):
 def update_epoch_summaries(writer, agent, artifacts, epoch):
     writer.add_scalar('Training/Loss', artifacts['loss'], epoch)
     writer.add_scalar('Training/Epsilon', artifacts['epsilon'], epoch)
+    writer.add_scalar('Training/Reward_Density', artifacts['reward_density'], epoch)
     writer.add_images('Obs/Images', artifacts['images'].unsqueeze(1), dataformats="NCHW")
     value_dist_img = gen_value_dist_plot(agent.value_support(), artifacts['value_distribution'])
     writer.add_image('Obs/Distributions', torch.tensor(value_dist_img), dataformats='HWC')

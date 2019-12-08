@@ -118,6 +118,8 @@ class CategoricalAgent(nn.Module):
         self._optimizer.zero_grad()
         obs, action, reward, next_obs, done = experience
 
+        reward_count = (reward != 0.).sum().detach().cpu().numpy()
+
         features = self._feature_extractor(obs)
         value_probs = self._categorical_network(features)
         action_select = action.unsqueeze(1).repeat(1, self._num_atoms).unsqueeze(1)
@@ -153,6 +155,7 @@ class CategoricalAgent(nn.Module):
             'images': obs[0],
             'value_distribution': value_probs[0],
             'epsilon': self._epsilon,
+            'reward_density': reward_count / reward.shape[0],
         }
         self._epsilon = self._epsilon * (1. - self._epsilon_decay)
         return loss, artifacts
