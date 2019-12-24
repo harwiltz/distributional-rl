@@ -42,6 +42,7 @@ def train_categorical_agent(
             (stack_size, *observation_shape),
             env.action_space,
             N=N,
+            lr=step_size,
             v_min=v_min,
             v_max=v_max,
             gamma=gamma,
