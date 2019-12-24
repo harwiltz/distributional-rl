@@ -175,6 +175,7 @@ if __name__ == "__main__":
     parser.add_argument('--epsilon', type=float, default=0.05, help='For e-greedy')
     parser.add_argument('--epsilon_decay', type=float, default=1e-4, help='For e-greedy')
     parser.add_argument('--feature_size', type=int, default=128)
+    parser.add_argument('--base_depth', type=int, default=128)
     parser.add_argument('--initial_collect_length', type=int, default=1000)
     parser.add_argument('--memory_capacity', type=int, default=10000)
     parser.add_argument('--batch_size', type=int, default=32)
@@ -192,6 +193,7 @@ if __name__ == "__main__":
             epsilon=args.epsilon,
             epsilon_decay=args.epsilon_decay,
             feature_size=args.feature_size,
+            base_depth=args.base_depth,
             memory_capacity=args.memory_capacity,
             initial_collect_length=args.initial_collect_length,
             batch_size=args.batch_size,
